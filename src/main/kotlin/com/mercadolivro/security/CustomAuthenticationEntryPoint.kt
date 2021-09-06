@@ -1,24 +1,25 @@
 package com.mercadolivro.security
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.mercadolivro.controller.response.ErrorResponse
+import com.mercadolivro.enums.Errors
+import org.springframework.http.HttpStatus
 import org.springframework.security.core.AuthenticationException
 import org.springframework.security.web.AuthenticationEntryPoint
 import org.springframework.stereotype.Component
-import java.io.IOException
-import javax.servlet.ServletException
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 
-
-@Component("restAuthenticationEntryPoint")
-class RestAuthenticationEntryPoint : AuthenticationEntryPoint {
-    @Throws(IOException::class, ServletException::class)
+@Component
+class CustomAuthenticationEntryPoint : AuthenticationEntryPoint{
     override fun commence(
         request: HttpServletRequest?,
         response: HttpServletResponse,
-        authenticationException: AuthenticationException
+        authException: AuthenticationException?
     ) {
         response.contentType = "application/json"
         response.status = HttpServletResponse.SC_UNAUTHORIZED
-        response.outputStream.println("{\"httpCode\": 403,\"message\": \"Access Denied\",\"internalCode\": \"ML-0001\"}")
+        val errorResponse = ErrorResponse(HttpStatus.UNAUTHORIZED.value(), Errors.ML000.message, Errors.ML000.code, null)
+        response.outputStream.print(jacksonObjectMapper().writeValueAsString(errorResponse))
     }
 }
