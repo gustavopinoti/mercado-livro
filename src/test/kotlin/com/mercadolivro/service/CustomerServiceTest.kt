@@ -4,6 +4,7 @@ import com.mercadolivro.enums.CustomerStatus
 import com.mercadolivro.enums.Errors
 import com.mercadolivro.enums.Role
 import com.mercadolivro.exception.NotFoundException
+import com.mercadolivro.helpers.buildCustomer
 import com.mercadolivro.model.CustomerModel
 import com.mercadolivro.repository.CustomerRepository
 import io.mockk.MockKAnnotations
@@ -16,11 +17,14 @@ import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
+import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
-import kotlin.math.exp
 
+@ActiveProfiles("test")
+@SpringBootTest
 @ExtendWith(SpringExtension::class)
 class CustomerServiceTest {
 
@@ -47,12 +51,12 @@ class CustomerServiceTest {
 
         every { customerRepository.findAll() } returns customers
 
-        customerService.getAll(null)
+        val returnedCustomers = customerService.getAll(null)
 
+        assertEquals(customers, returnedCustomers)
         verify(exactly = 1) {
             customerRepository.findAll()
         }
-
         verify(exactly = 0) {
             customerRepository.findByNameContaining(any())
         }
@@ -67,19 +71,19 @@ class CustomerServiceTest {
 
         every { customerRepository.findByNameContaining(namePrefix) } returns customers
 
-        customerService.getAll(namePrefix)
+        val returnedCustomers = customerService.getAll(namePrefix)
 
+        assertEquals(customers, returnedCustomers)
         verify(exactly = 0) {
             customerRepository.findAll()
         }
-
         verify(exactly = 1) {
             customerRepository.findByNameContaining(namePrefix)
         }
     }
 
     @Test
-    fun `should encrpt password when create user`() {
+    fun `should encode password when create user`() {
         val initialPassword = "some password"
         val customer = buildCustomer(password = initialPassword)
         val fakeEncodePassword = UUID.randomUUID().toString()
@@ -93,7 +97,6 @@ class CustomerServiceTest {
         verify(exactly = 1) {
             customerRepository.save(expectedCustomer)
         }
-
         verify(exactly = 1) {
             bCryptPasswordEncoder.encode(initialPassword)
         }
@@ -106,8 +109,9 @@ class CustomerServiceTest {
 
         every { customerRepository.findById(id) } returns Optional.of(customer)
 
-        customerService.findById(id)
+        val returnedCustomer = customerService.findById(id)
 
+        assertEquals(customer, returnedCustomer)
         verify(exactly = 1) {
             customerRepository.findById(id)
         }
@@ -121,12 +125,12 @@ class CustomerServiceTest {
 
         every { customerRepository.findById(id) } returns Optional.empty()
 
-        val error = Assertions.assertThrows(NotFoundException::class.java) {
+        val error = assertThrows(NotFoundException::class.java) {
             customerService.findById(id)
         }
 
-        Assertions.assertEquals(expectedErrorMessage, error.message)
-        Assertions.assertEquals(expectedErrorCode, error.errorCode)
+        assertEquals(expectedErrorMessage, error.message)
+        assertEquals(expectedErrorCode, error.errorCode)
 
         verify(exactly = 1) {
             customerRepository.findById(id)
@@ -134,18 +138,6 @@ class CustomerServiceTest {
     }
 
 
-    private fun buildCustomer(
-            id: Int? = null,
-            name: String = "customer name",
-            email: String = "${UUID.randomUUID()}@email.com",
-            password: String = "password"
-    ) = CustomerModel(
-            id = id,
-            name = name,
-            email = email,
-            status = CustomerStatus.ATIVO,
-            password = password,
-            roles = setOf(Role.CUSTOMER)
-    )
+
 
 }

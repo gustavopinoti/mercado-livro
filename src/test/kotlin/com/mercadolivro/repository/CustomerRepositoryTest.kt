@@ -1,14 +1,16 @@
-package com.mercadolivro.com.mercadolivro.repository
+package com.mercadolivro.repository
 
 import com.mercadolivro.enums.CustomerStatus
 import com.mercadolivro.model.CustomerModel
 import com.mercadolivro.repository.CustomerRepository
 import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
 
@@ -18,6 +20,9 @@ class CustomerRepositoryTest {
 
     @Autowired
     private lateinit var customerRepository: CustomerRepository
+
+    @BeforeEach
+    fun setUp() = customerRepository.deleteAll()
 
     @Test
     fun `should return naming containing with prefix`() {
