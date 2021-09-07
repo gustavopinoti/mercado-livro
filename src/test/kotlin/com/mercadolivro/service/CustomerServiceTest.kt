@@ -7,15 +7,13 @@ import com.mercadolivro.exception.NotFoundException
 import com.mercadolivro.helpers.buildCustomer
 import com.mercadolivro.model.CustomerModel
 import com.mercadolivro.repository.CustomerRepository
-import io.mockk.MockKAnnotations
-import io.mockk.every
+import io.mockk.*
 import io.mockk.impl.annotations.InjectMockKs
 import io.mockk.impl.annotations.MockK
-import io.mockk.verify
-import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder
@@ -24,7 +22,6 @@ import org.springframework.test.context.junit.jupiter.SpringExtension
 import java.util.*
 
 @ActiveProfiles("test")
-@SpringBootTest
 @ExtendWith(SpringExtension::class)
 class CustomerServiceTest {
 
@@ -118,14 +115,14 @@ class CustomerServiceTest {
     }
 
     @Test
-    fun `should throw erro when customer not found by id`() {
+    fun `should throw error when customer not found by id`() {
         val id = Random().nextInt()
         val expectedErrorMessage = Errors.ML201.message.format(id)
         val expectedErrorCode = Errors.ML201.code
 
         every { customerRepository.findById(id) } returns Optional.empty()
 
-        val error = assertThrows(NotFoundException::class.java) {
+        val error = assertThrows<NotFoundException> {
             customerService.findById(id)
         }
 
@@ -137,7 +134,81 @@ class CustomerServiceTest {
         }
     }
 
+    @Test
+    fun `should update user`() {
+        val id = Random().nextInt()
+        val customer = buildCustomer(id = id)
+        val newCustomer = customer.copy(
+                name = "New name",
+                email = "New email"
+        )
 
+        every { customerRepository.existsById(id) } returns true
+        every { customerRepository.save(newCustomer) } returns newCustomer
 
+        customerService.update(newCustomer)
 
+        verify(exactly = 1) {
+            customerRepository.save(newCustomer)
+        }
+    }
+
+    @Test
+    fun `should throws not found exception when customer not found`() {
+        val id = Random().nextInt()
+        val fakeCustomer = buildCustomer(id = id)
+        val expectedErrorMessage = Errors.ML201.message.format(id)
+        val expectedErrorCode = Errors.ML201.code
+
+        every { customerRepository.existsById(id) } returns false
+
+        val error = assertThrows<NotFoundException> {
+            customerService.update(fakeCustomer)
+        }
+
+        assertEquals(expectedErrorMessage, error.message)
+        assertEquals(expectedErrorCode, error.errorCode)
+    }
+
+    @Test
+    fun `should delete user`() {
+        val id = Random().nextInt()
+        val customer = buildCustomer(id = id)
+        val expectedCustomer = customer.copy(status = CustomerStatus.INATIVO)
+
+        every { customerRepository.findById(id) } returns Optional.of(customer)
+        every { customerRepository.save(expectedCustomer) } returns expectedCustomer
+        every { bookService.deleteByCustomer(customer) } just runs
+
+        customerService.delete(id)
+
+        verify(exactly = 1) {
+            bookService.deleteByCustomer(customer)
+        }
+        verify(exactly = 1) {
+            customerRepository.save(customer)
+        }
+    }
+
+    @Test
+    fun `should return true if email is available`() {
+        val email = "${UUID.randomUUID()}@gmail.com"
+
+        every { customerRepository.existsByEmail(email) } returns false
+
+        val result = customerService.emailAvailable(email)
+
+        assertTrue(result)
+    }
+
+    @Test
+    fun `should return true if email is not available`() {
+        val email = "${UUID.randomUUID()}@gmail.com"
+
+        every { customerRepository.existsByEmail(email) } returns true
+
+        val result = customerService.emailAvailable(email)
+
+        assertFalse(result)
+    }
 }
